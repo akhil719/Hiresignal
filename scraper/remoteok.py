@@ -26,15 +26,10 @@ logger = logging.getLogger(__name__)
 
 REMOTEOK_URL = "https://remoteok.com/api"
 
-HEADERS = {
-    # RemoteOK requires a non-empty User-Agent; browser UA prevents 403s
-    "User-Agent": (
-        "Mozilla/5.0 (compatible; HiringIntelBot/1.0; "
-        "+https://github.com/your-repo/hiring-intel)"
-    ),
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json",
 }
-
 MAX_RETRIES = 3
 RETRY_BACKOFF = [2, 5, 10]  # seconds between retries
 
