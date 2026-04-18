@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HireSignal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink: #111;
+  --paper: #f5f2eb;
+  --rule: #111;
+  --muted: #666;
+  --accent: #c8390a;
+  --tag-bg: #e8e4db;
+}
+body { background: var(--paper); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; line-height: 1.5; }
+.container { margin: 0 24px; }
+.masthead { border-bottom: 3px solid var(--ink); padding: 12px 0 8px; }
+.masthead-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.site-name { font-family: 'IBM Plex Mono', monospace; font-size: 38px; font-weight: 500; letter-spacing: -2px; line-height: 1; }
+.masthead-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; line-height: 1.6; }
+.masthead-tagline { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); border-top: 1px solid var(--ink); padding-top: 6px; display: flex; justify-content: space-between; align-items: center; }
+.refresh-btn { font-family: 'IBM Plex Mono', monospace; font-size: 11px; background: var(--ink); color: var(--paper); border: none; padding: 3px 10px; cursor: pointer; }
+.refresh-btn:hover { background: var(--accent); }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--ink); }
+.stat-box { padding: 14px 16px; border-right: 1px solid var(--ink); }
+.stat-box:last-child { border-right: none; }
+.stat-num { font-family: 'IBM Plex Mono', monospace; font-size: 36px; font-weight: 500; line-height: 1; letter-spacing: -1px; }
+.stat-num.red { color: var(--accent); }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; }
+.section-head { border-bottom: 1px solid var(--ink); border-top: 1px solid var(--ink); padding: 5px 0; display: flex; align-items: center; justify-content: space-between; }
+.section-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
+.section-count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.main-cols { display: grid; grid-template-columns: 1fr 240px; border-bottom: 1px solid var(--ink); }
+.col-left { border-right: 1px solid var(--ink); }
+.filters { display: flex; }
+.filter-field { flex: 1; border: none; border-right: 1px solid var(--ink); background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 7px 10px; outline: none; color: var(--ink); border-bottom: 1px solid var(--ink); }
+.filter-field::placeholder { color: var(--muted); }
+.filter-field:focus { background: #fff; }
+.surge-toggle { font-family: 'IBM Plex Mono', monospace; font-size: 11px; border: none; border-left: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: transparent; padding: 7px 12px; cursor: pointer; color: var(--muted); white-space: nowrap; }
+.surge-toggle.on { background: var(--accent); color: #fff; }
+.job-row-head { display: grid; grid-template-columns: 1fr 90px 65px 85px; border-bottom: 2px solid var(--ink); padding: 6px 12px; gap: 8px; background: var(--tag-bg); }
+.job-col-head { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.job-row { display: grid; grid-template-columns: 1fr 90px 65px 85px; border-bottom: 1px solid #ddd; padding: 9px 12px; cursor: pointer; gap: 8px; align-items: start; }
+.job-row:hover { background: #fff; }
+.job-row:last-child { border-bottom: none; }
+.job-title-text { font-size: 13px; font-weight: 600; color: var(--ink); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-title-text:hover { color: var(--accent); text-decoration: underline; }
+.job-company { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-tags { display: flex; flex-wrap: wrap; gap: 3px; padding-top: 2px; }
+.tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; background: var(--tag-bg); padding: 1px 5px; border: 1px solid #ccc; }
+.level-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 2px 6px; display: inline-block; border: 1px solid var(--ink); text-transform: uppercase; letter-spacing: 0.5px; }
+.level-badge.senior, .level-badge.lead { background: var(--ink); color: var(--paper); }
+.level-badge.exec { background: var(--accent); color: #fff; border-color: var(--accent); }
+.surge-mark { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); border: 1px solid var(--accent); padding: 1px 5px; display: inline-block; margin-top: 2px; }
+.salary-text { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+.date-text { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.loading-row { padding: 28px 12px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.pager { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-top: 1px solid var(--ink); background: var(--tag-bg); }
+.pager-info { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.pager-btns { display: flex; gap: 4px; align-items: center; }
+.pager-btn { font-family: 'IBM Plex Mono', monospace; font-size: 11px; border: 1px solid var(--ink); background: transparent; padding: 3px 10px; cursor: pointer; }
+.pager-btn:hover { background: var(--ink); color: var(--paper); }
+.pager-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.pager-page { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); min-width: 60px; text-align: center; }
+.sidebar-block { border-bottom: 1px solid var(--ink); padding: 12px; }
+.sidebar-block:last-child { border-bottom: none; }
+.sidebar-head { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #ddd; }
+.company-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #e8e4db; cursor: pointer; }
+.company-row:last-child { border-bottom: none; }
+.company-row:hover .cnm { color: var(--accent); text-decoration: underline; }
+.cnm { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+.cnm.surge { color: var(--accent); }
+.cct { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.tags-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-pill { font-family: 'IBM Plex Mono', monospace; font-size: 10px; border: 1px solid #bbb; padding: 2px 7px; cursor: pointer; background: transparent; }
+.tag-pill:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.sbar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sbar-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; width: 50px; color: var(--muted); }
+.sbar-track { flex: 1; height: 8px; background: var(--tag-bg); border: 1px solid #ccc; }
+.sbar-fill { height: 100%; background: var(--ink); transition: width 0.4s; }
+.sbar-fill.red { background: var(--accent); }
+.sbar-ct { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); min-width: 24px; text-align: right; }
+.footer { border-top: 3px solid var(--ink); padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
+.footer a { color: var(--muted); text-decoration: none; margin-left: 12px; }
+.footer a:hover { color: var(--accent); }
+.toast { position: fixed; bottom: 16px; right: 24px; background: var(--ink); color: var(--paper); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 8px 14px; opacity: 0; transform: translateY(10px); transition: all 0.2s; pointer-events: none; z-index: 100; }
+.toast.show { opacity: 1; transform: translateY(0); }
+@media (max-width: 800px) {
+  .main-cols { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .stat-box:nth-child(2) { border-right: none; }
+  .stat-box:nth-child(3) { border-top: 1px solid var(--ink); }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="masthead">
+    <div class="masthead-top">
+      <div class="site-name">HIRESIGNAL</div>
+      <div class="masthead-meta" id="metaTop">LOADING...</div>
+    </div>
+    <div class="masthead-tagline">
+      <span>JOB MARKET SIGNALS &mdash; SCRAPED, CLEANED &amp; DELIVERED AUTOMATICALLY</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="triggerPipeline()">REFRESH DATA</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num" id="sTotal">&#8212;</div>
+      <div class="stat-label">Total jobs</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="sCompanies">&#8212;</div>
+      <div class="stat-label">Companies hiring</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num red" id="sSurge">&#8212;</div>
+      <div class="stat-label">Surge signals</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="sSync" style="font-size:18px;padding-top:6px">&#8212;</div>
+      <div class="stat-label" id="sSyncSub">Last sync</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="section-head" style="padding:5px 0">
+    <span class="section-title">Live Job Feed</span>
+    <span class="section-count" id="feedCount">Loading...</span>
+  </div>
+</div>
+
+<div class="container">
+  <div class="main-cols">
+    <div class="col-left">
+      <div class="filters">
+        <input class="filter-field" id="fCompany" placeholder="Filter company..." oninput="debouncedLoad()" />
+        <input class="filter-field" id="fTag" placeholder="Filter skill/tag..." oninput="debouncedLoad()" />
+        <select class="filter-field" id="fLevel" onchange="loadJobs()" style="cursor:pointer">
+          <option value="">All levels</option>
+          <option value="junior">Junior</option>
+          <option value="mid">Mid</option>
+          <option value="senior">Senior</option>
+          <option value="lead">Lead</option>
+          <option value="exec">Exec</option>
+        </select>
+        <select class="filter-field" id="fDays" onchange="loadJobs()" style="cursor:pointer;border-right:1px solid var(--ink)">
+          <option value="">All time</option>
+          <option value="1">Last 24h</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+        <button class="surge-toggle" id="surgeBtn" onclick="toggleSurge()">SURGE ONLY</button>
+      </div>
+      <div class="job-row-head">
+        <div class="job-col-head">Role / Company</div>
+        <div class="job-col-head">Tags</div>
+        <div class="job-col-head">Level</div>
+        <div class="job-col-head">Salary / Date</div>
+      </div>
+      <div id="jobsList"><div class="loading-row">Loading jobs...</div></div>
+      <div class="pager">
+        <span class="pager-info" id="pagerInfo">&#8212;</span>
+        <div class="pager-btns">
+          <button class="pager-btn" id="prevBtn" onclick="goPage(-1)" disabled>PREV</button>
+          <span class="pager-page" id="pageLabel">1 / 1</span>
+          <button class="pager-btn" id="nextBtn" onclick="goPage(1)">NEXT</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="sidebar-block">
+        <div class="sidebar-head">Top Hiring (30d)</div>
+        <div id="companiesList"><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">Loading...</span></div>
+      </div>
+      <div class="sidebar-block">
+        <div class="sidebar-head">Skills In Demand (7d)</div>
+        <div class="tags-wrap" id="tagCloud"><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">Loading...</span></div>
+      </div>
+      <div class="sidebar-block">
+        <div class="sidebar-head">Seniority Split (7d)</div>
+        <div id="seniorityBars"><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">Loading...</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>HIRESIGNAL &mdash; AUTO-REFRESHES EVERY 6H &mdash; SOURCE: REMOTEOK</span>
+  <span>
+    <a href="/api/jobs">API:JOBS</a>
+    <a href="/api/trends">API:TRENDS</a>
+    <a href="/api/companies">API:COMPANIES</a>
+    <a href="/docs">SWAGGER</a>
+  </span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let page = 1, pages = 1, surgeOnly = false, debTimer;
+
+document.getElementById('metaTop').innerHTML =
+  new Date().toLocaleDateString('en-GB',{weekday:'short',year:'numeric',month:'short',day:'numeric'}).toUpperCase() +
+  '<br>B2B HIRING INTELLIGENCE';
+
+loadStats();
+loadJobs();
+loadSidebar();
+
+function debouncedLoad() {
+  clearTimeout(debTimer);
+  debTimer = setTimeout(() => { page = 1; loadJobs(); }, 350);
+}
+
+async function loadStats() {
+  try {
+    const d = await get('/api/stats');
+    document.getElementById('sTotal').textContent = fmt(d.total_jobs);
+    document.getElementById('sCompanies').textContent = fmt(d.total_companies);
+    document.getElementById('sSurge').textContent = fmt(d.surge_jobs);
+    if (d.last_run) {
+      document.getElementById('sSync').textContent = ago(new Date(d.last_run.started_at));
+      document.getElementById('sSyncSub').textContent =
+        d.last_run.status === 'success' ? '+' + d.last_run.jobs_new + ' new jobs' : 'FAILED';
+    }
+  } catch(e) {}
+}
+
+async function loadJobs() {
+  const list = document.getElementById('jobsList');
+  list.innerHTML = '<div class="loading-row">Loading...</div>';
+  const co = document.getElementById('fCompany').value.trim();
+  const tg = document.getElementById('fTag').value.trim();
+  const lv = document.getElementById('fLevel').value;
+  const dy = document.getElementById('fDays').value;
+  let url = `/api/jobs?page=${page}&page_size=15`;
+  if (co) url += `&company=${encodeURIComponent(co)}`;
+  if (tg) url += `&tag=${encodeURIComponent(tg)}`;
+  if (lv) url += `&seniority=${lv}`;
+  if (dy) url += `&days=${dy}`;
+  if (surgeOnly) url += `&surge_only=true`;
+  try {
+    const d = await get(url);
+    pages = d.pages || 1;
+    document.getElementById('feedCount').textContent = fmt(d.total) + ' jobs';
+    document.getElementById('pagerInfo').textContent =
+      `${Math.min((page-1)*15+1, d.total)}-${Math.min(page*15, d.total)} of ${fmt(d.total)}`;
+    document.getElementById('pageLabel').textContent = `${page} / ${pages}`;
+    document.getElementById('prevBtn').disabled = page <= 1;
+    document.getElementById('nextBtn').disabled = page >= pages;
+    if (!d.jobs.length) {
+      list.innerHTML = '<div class="loading-row">No jobs match these filters.</div>';
+      return;
+    }
+    list.innerHTML = d.jobs.map(j => `
+      <div class="job-row" onclick="window.open('${esc(j.url)}','_blank')">
+        <div>
+          <a class="job-title-text" href="${esc(j.url)}" target="_blank" onclick="event.stopPropagation()">${esc(j.title)}</a>
+          <div class="job-company">${esc(j.company)} / ${esc(j.location)}</div>
+          ${j.is_surge ? '<span class="surge-mark">SURGE</span>' : ''}
+        </div>
+        <div class="job-tags">${(j.tags||[]).slice(0,3).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+        <div>${j.seniority_level
+          ? `<span class="level-badge ${j.seniority_level}">${j.seniority_level}</span>`
+          : '<span style="color:#999;font-size:11px">N/A</span>'}</div>
+        <div>
+          <div class="salary-text">${j.salary_min ? fmtSal(j.salary_min,j.salary_max) : '<span style="color:#999">N/A</span>'}</div>
+          <div class="date-text">${j.date_scraped ? ago(new Date(j.date_scraped)) : ''}</div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="loading-row">Error loading jobs.</div>';
+  }
+}
+
+function goPage(dir) {
+  const n = page + dir;
+  if (n < 1 || n > pages) return;
+  page = n; loadJobs();
+}
+
+function toggleSurge() {
+  surgeOnly = !surgeOnly;
+  document.getElementById('surgeBtn').classList.toggle('on', surgeOnly);
+  page = 1; loadJobs();
+}
+
+async function loadSidebar() {
+  try {
+    const cos = await get('/api/companies?limit=10&days=30');
+    const el = document.getElementById('companiesList');
+    if (!cos.length) { el.innerHTML = '<span style="color:var(--muted);font-size:11px;font-family:\'IBM Plex Mono\',monospace">No data yet</span>'; return; }
+    el.innerHTML = cos.map(c=>`
+      <div class="company-row" onclick="filterCompany('${esc(c.company)}')">
+        <span class="cnm ${c.has_surge?'surge':''}">${esc(c.company)}${c.has_surge?' *':''}</span>
+        <span class="cct">${c.job_count}</span>
+      </div>`).join('');
+  } catch(e) {}
+
+  try {
+    const t = await get('/api/trends?days=7');
+    const tc = document.getElementById('tagCloud');
+    if (t.top_tags.length) {
+      tc.innerHTML = t.top_tags.map(({tag,count})=>
+        `<button class="tag-pill" onclick="filterTag('${esc(tag)}')">${esc(tag)} <span style="opacity:.5">${count}</span></button>`
+      ).join('');
+    } else {
+      tc.innerHTML = '<span style="color:var(--muted);font-size:11px;font-family:\'IBM Plex Mono\',monospace">No data yet</span>';
+    }
+    const levels = ['exec','lead','senior','mid','junior'];
+    const split = t.seniority_split || {};
+    const maxVal = Math.max(...Object.values(split), 1);
+    document.getElementById('seniorityBars').innerHTML = levels.map(l=>{
+      const ct = split[l]||0;
+      return `<div class="sbar-row">
+        <div class="sbar-label">${l}</div>
+        <div class="sbar-track"><div class="sbar-fill${l==='exec'||l==='lead'?' red':''}" style="width:${Math.round(ct/maxVal*100)}%"></div></div>
+        <div class="sbar-ct">${ct}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+function filterCompany(n) { document.getElementById('fCompany').value=n; page=1; loadJobs(); }
+function filterTag(t) { document.getElementById('fTag').value=t; page=1; loadJobs(); }
+
+async function triggerPipeline() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled=true; btn.textContent='RUNNING...';
+  try {
+    await fetch('/api/trigger',{method:'POST'});
+    toast('Pipeline triggered. Refreshing...');
+    let i=0;
+    const p = setInterval(async()=>{
+      i++; await loadStats(); await loadJobs(); await loadSidebar();
+      if(i>=12){clearInterval(p);btn.disabled=false;btn.textContent='REFRESH DATA';}
+    },5000);
+  } catch(e){btn.disabled=false;btn.textContent='REFRESH DATA';}
+}
+
+async function get(url){const r=await fetch(url);if(!r.ok)throw new Error(r.status);return r.json();}
+function fmt(n){return n==null?'—':n.toLocaleString();}
+function fmtSal(mn,mx){const k=v=>v>=1000?Math.round(v/1000)+'k':v;return mn===mx?`$${k(mn)}`:`$${k(mn)}-${k(mx)}`;}
+function ago(d){
+  if(!d||isNaN(d))return '—';
+  const s=Math.floor((Date.now()-d)/1000);
+  if(s<60)return 'just now';
+  if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
