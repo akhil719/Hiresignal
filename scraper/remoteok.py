@@ -1,12 +1,12 @@
 """
 scraper/remoteok.py
 
-Scrapes RemoteOK's public JSON API for remote job postings.
+Scrapes Remotive's public JSON API for remote job postings.
 
-Why RemoteOK?
+Why Remotive?
 - Public JSON endpoint (no login required, no JS rendering needed)
 - Clearly structured data with company, title, tags, salary, date
-- Returns paginated-style bulk data — we filter by date window
+- No IP blocking or rate limiting on server requests
 - Terms of service allow non-commercial data access
 
 Design decisions:
@@ -24,7 +24,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-REMOTEOK_URL = "https://remoteok.com/api"
+REMOTEOK_URL = "https://remotive.com/api/remote-jobs"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -42,14 +42,14 @@ def _safe_get(d: dict, key: str, default=None):
     return val
 
 
-def _parse_epoch(epoch_val) -> Optional[datetime]:
+def _parse_date(date_str) -> Optional[datetime]:
     """
-    Convert epoch timestamp (int or string) to UTC datetime.
+    Convert ISO date string to UTC datetime.
     Returns None on any failure — we never crash on a bad date.
     """
     try:
-        return datetime.fromtimestamp(int(epoch_val), tz=timezone.utc)
-    except (TypeError, ValueError, OSError):
+        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except (TypeError, ValueError, AttributeError):
         return None
 
 
@@ -59,17 +59,12 @@ def _parse_salary(raw: Optional[str]) -> tuple[Optional[float], Optional[float]]
       "$80k - $120k", "60000-90000", "$100,000", "80k"
     Returns (min_usd_annual, max_usd_annual) as floats.
     Returns (None, None) if unparseable — we keep salary_raw for audit.
-
-    Decision: we normalise to annual USD by assuming 'k' = 1000.
-    Hourly rates are not converted (too ambiguous without context).
     """
     if not raw:
         return None, None
 
     import re
-    # Strip currency symbols, commas, spaces
     cleaned = re.sub(r"[$,\s]", "", raw.lower())
-    # Find all numeric values (possibly with 'k' suffix)
     nums = re.findall(r"(\d+(?:\.\d+)?)(k?)", cleaned)
 
     values = []
@@ -86,13 +81,11 @@ def _parse_salary(raw: Optional[str]) -> tuple[Optional[float], Optional[float]]
     return min(values), max(values)
 
 
-def fetch_jobs(max_pages: int = 3) -> list[dict]:
+def fetch_jobs() -> list[dict]:
     """
-    Fetch job listings from RemoteOK.
+    Fetch job listings from Remotive API.
 
-    RemoteOK returns all jobs in a single JSON array (first element is metadata).
-    We treat this as one "page" but support future pagination via max_pages param.
-
+    Remotive returns all jobs in a single JSON object with a 'jobs' key.
     Returns a list of raw job dicts (unmodified from source).
     Raises RuntimeError if all retries are exhausted.
     """
@@ -100,21 +93,14 @@ def fetch_jobs(max_pages: int = 3) -> list[dict]:
 
     for attempt in range(MAX_RETRIES):
         try:
-            logger.info(f"Fetching RemoteOK jobs (attempt {attempt + 1})")
+            logger.info(f"Fetching Remotive jobs (attempt {attempt + 1})")
             with httpx.Client(timeout=30, follow_redirects=True) as client:
                 response = client.get(REMOTEOK_URL, headers=HEADERS)
                 response.raise_for_status()
 
             data = response.json()
-
-            # First element is always a metadata/legal object — skip it
-            if isinstance(data, list) and len(data) > 1:
-                raw_jobs = [item for item in data[1:] if isinstance(item, dict)]
-                logger.info(f"Fetched {len(raw_jobs)} raw jobs from RemoteOK")
-            else:
-                logger.warning("Unexpected response structure from RemoteOK")
-                raw_jobs = []
-
+            raw_jobs = data.get("jobs", [])
+            logger.info(f"Fetched {len(raw_jobs)} raw jobs from Remotive")
             break  # success — exit retry loop
 
         except httpx.HTTPStatusError as e:
@@ -122,14 +108,14 @@ def fetch_jobs(max_pages: int = 3) -> list[dict]:
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_BACKOFF[attempt])
             else:
-                raise RuntimeError(f"RemoteOK scrape failed after {MAX_RETRIES} attempts: {e}")
+                raise RuntimeError(f"Remotive scrape failed after {MAX_RETRIES} attempts: {e}")
 
         except httpx.RequestError as e:
             logger.error(f"Request error on attempt {attempt + 1}: {e}")
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_BACKOFF[attempt])
             else:
-                raise RuntimeError(f"RemoteOK scrape failed after {MAX_RETRIES} attempts: {e}")
+                raise RuntimeError(f"Remotive scrape failed after {MAX_RETRIES} attempts: {e}")
 
         except Exception as e:
             logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
@@ -143,7 +129,7 @@ def fetch_jobs(max_pages: int = 3) -> list[dict]:
 
 def parse_job(raw: dict) -> dict:
     """
-    Transform a raw RemoteOK job dict into a structured intermediate dict.
+    Transform a raw Remotive job dict into a structured intermediate dict.
 
     All field access is defensive — missing fields become None.
     We preserve salary_raw alongside parsed values for audit purposes.
@@ -152,23 +138,23 @@ def parse_job(raw: dict) -> dict:
     salary_raw = _safe_get(raw, "salary")
     salary_min, salary_max = _parse_salary(salary_raw)
 
-    # Tags come as a list; coerce to list safely
+    # Tags come as a list from Remotive
     tags_raw = _safe_get(raw, "tags", [])
     if isinstance(tags_raw, str):
         tags_raw = [t.strip() for t in tags_raw.split(",") if t.strip()]
 
     return {
-        "source_id":    _safe_get(raw, "id", ""),
-        "source":       "remoteok",
-        "title":        _safe_get(raw, "position", "Unknown Title"),
-        "company":      _safe_get(raw, "company", "Unknown Company"),
-        "location":     _safe_get(raw, "location", "Remote"),
+        "source_id":    str(_safe_get(raw, "id", "")),
+        "source":       "remotive",
+        "title":        _safe_get(raw, "title", "Unknown Title"),
+        "company":      _safe_get(raw, "company_name", "Unknown Company"),
+        "location":     _safe_get(raw, "candidate_required_location", "Remote"),
         "url":          _safe_get(raw, "url", ""),
-        "tags":         tags_raw,           # list at this stage
+        "tags":         tags_raw,
         "salary_raw":   salary_raw,
         "salary_min":   salary_min,
         "salary_max":   salary_max,
-        "date_posted":  _parse_epoch(_safe_get(raw, "epoch")),
+        "date_posted":  _parse_date(_safe_get(raw, "publication_date")),
         "description":  _safe_get(raw, "description", ""),
     }
 
@@ -186,7 +172,6 @@ def scrape() -> list[dict]:
         try:
             parsed.append(parse_job(raw))
         except Exception as e:
-            # One bad record should never kill the whole run
             errors += 1
             logger.warning(f"Failed to parse job record: {e} | raw={raw.get('id', '?')}")
 
